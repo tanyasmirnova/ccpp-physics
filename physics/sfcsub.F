@@ -43,7 +43,7 @@
       implicit none
       character(len=*), intent(in) :: prefix
       integer, intent(in) :: index
-      character(len=10) :: message
+      character(len=8) :: message
       !
       ! probably need to implement a check that len(prefix) + '-' + length of
       ! string representation of index <= len(message)
@@ -8622,4 +8622,19 @@ cjfe
       return
       end
 
+<<<<<<< HEAD
+!>\ingroup mod_sfcsub
+      function message(prefix,index)
+      implicit none
+      character(len=*), intent(in) :: prefix
+      integer, intent(in) :: index
+      character(len=8) :: message
+      !
+      ! probably need to implement a check that len(prefix) + '-' + length of
+      ! string representation of index <= len(message)
+      write(message,fmt='(a,a,i0)') trim(prefix), '-', index
+      end function message
+
+=======
+>>>>>>> 766991423c7be6d16459a2d653e60cf43b0d7e1b
 !>@}
