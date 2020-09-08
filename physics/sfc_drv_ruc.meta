@@ -309,7 +309,7 @@
   kind = kind_phys
   intent = out
   optional = F
-[tsice]
+[tiice]
   standard_name = internal_ice_temperature
   long_name = sea ice internal temperature
   units = K
