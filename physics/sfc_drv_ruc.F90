@@ -348,7 +348,7 @@ module lsm_ruc
      ! for ice
      &       sfcqc_ice, sfcdew_ice, sfcqv_ice,                          &
      &       tice, tsurf_ice, tsnow_ice, z0rl_ice,                      &
-     &       qsurf_ice, gflux_ice, evap_ice, hflx_ice,                  &
+     &       qsurf_ice, gflux_ice, evap_ice, ep1d_ice, hflx_ice,        &
      &       cm_ice, ch_ice, snowfallac_ice,                            &
      ! --- out
      &       acsnow, rhosnf, sbsno,                                     & 
@@ -429,7 +429,7 @@ module lsm_ruc
      &       cmm_lnd, chh_lnd, hflx_lnd, sbsno,                          &
      &       snowfallac_lnd,                                             &
      ! for ice
-     &       sncovr1_ice, qsurf_ice, gflux_ice, evap_ice,                &
+     &       sncovr1_ice, qsurf_ice, gflux_ice, evap_ice, ep1d_ice,      &
      &       cmm_ice, chh_ice, hflx_ice, snowfallac_ice
 
       logical,          intent(in)  :: flag_init, flag_restart
@@ -1294,6 +1294,7 @@ module lsm_ruc
 
         ! Interstitial
         evap_ice(i)   = qfx_ice(i,j) / rho(i)           ! kinematic
+        ep1d_ice(i)   = qfx_ice(i,j) * con_hvap
         hflx_ice(i)   = hfx_ice(i,j) / (con_cp*rho(i))  ! kinematic
         gflux_ice(i)  = ssoil_ice(i,j)
 
@@ -1828,6 +1829,13 @@ module lsm_ruc
               tslb(i,k)  = stc(i,k)
               sh2o(i,k)  = slc(i,k)
             enddo
+            if (lsoil < lsoil_ruc) then
+              do k=lsoil+1,lsoil_ruc
+                tslb(i,k)  = soiltemp(i,k,j)
+                smois(i,k) = soilm(i,k,j)
+                sh2o(i,k)  = soilh2o(i,k,j)
+              enddo
+            endif
           endif ! land or ice
         enddo
         enddo
@@ -1836,7 +1844,7 @@ module lsm_ruc
       !-- frac_grid=.true.
         do j=jts,jte
         do i=its,ite
-          if ( land(i) then
+          if ( land(i) ) then
             wetness(i) = mavail(i,j)
             do k = 1, lsoil_ruc
               tslb(i,k)  = soiltemp(i,k,j)
@@ -1844,7 +1852,7 @@ module lsm_ruc
               sh2o(i,k)  = soilh2o(i,k,j)
               smfrkeep(i,k) = smfr(i,k,j)
             enddo
-          elseif ( icy(i)) then
+          elseif ( icy(i) ) then
             do k = 1, lsoil_ruc
               tsice(i,k) = soiltemp(i,k,j)
             enddo

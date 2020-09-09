@@ -508,7 +508,7 @@ contains
             hflx(i)   = hflx_ice(i)
             qss(i)    = qss_ice(i)
             tsfc(i)   = tsfc_ice(i)
-            do k=1,kice ! store tiice in stc to reduce output in the nonfrac grid case
+            do k=1,min(kice,km) ! store tiice in stc to reduce output in the nonfrac grid case
               stc(i,k)=tiice(i,k)
             end do
             if( cplflx ) tsfcl(i) = tsfc_ice(i)
