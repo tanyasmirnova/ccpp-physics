@@ -319,7 +319,8 @@ module lsm_ruc
      ! inputs
      &     ( iter, me, master, delt, kdt, im, nlev, lsm_ruc, lsm,       &
      &       imp_physics, imp_physics_gfdl, imp_physics_thompson,       &
-     &       do_mynnsfclay, lsoil_ruc, lsoil, rdlai, zs,                &
+     &       do_mynnsfclay,                                             &
+     &       lsoil_ruc, lsoil, rdlai, zs,                               &
      &       t1, q1, qc, soiltyp, vegtype, sigmaf, laixy,               &
      &       dlwflx, dswsfc, snet, tg3,                                 &
      &       land, icy,  lake,                                          &
@@ -437,6 +438,11 @@ module lsm_ruc
       character(len=*), intent(out) :: errmsg
       integer,          intent(out) :: errflg
 
+      integer                       ::    spp_lsm
+      real,  dimension( im, 1, 1 )  ::    pattern_spp_lsm
+      real,  dimension( im, 1, 1 )  ::    field_sf
+
+
 !  ---  locals:
       real (kind=kind_phys), dimension(im) :: rho,                      &
      &       q0, qs1,                                                   &
@@ -452,7 +458,6 @@ module lsm_ruc
      &       tsnow_ice_old, snowfallac_ice_old, sfalb_ice_old,          &
      &       sfcqv_ice_old, sfcqc_ice_old, z0rl_ice_old,                &
      &       sncovr1_ice_old
-
 
       real (kind=kind_phys), dimension(lsoil_ruc) :: et
 
@@ -524,6 +529,11 @@ module lsm_ruc
 
       debug_print=.false.
 
+      !-- a flag and patterns for stochastic perturbations
+      spp_lsm = 0
+      pattern_spp_lsm = 0.
+      field_sf = 0.
+ 
       chklowq = 1.
       !-- Define soil depths
       CALL init_soil_depth_3 ( zs , dzs , lsoil_ruc )
@@ -1032,8 +1042,9 @@ module lsm_ruc
         endif
 
 !> - Call RUC LSM lsmruc() for land. 
-      call lsmruc(                                                           &
-     &          delt, flag_init, flag_restart, kdt, iter, nsoil,             &
+      call ruc_land ( spp_lsm_loc, pattern_spp_lsm, field_sf,                &
+     &          flag_init, flag_restart, iter,                               &
+     &          delt, dt, nsoil,                                             &
      &          graupelncv(i,j), snowncv(i,j), rainncv(i,j), raincv(i,j),    &
      &          zs, prcp(i,j), sneqv_lnd(i,j), snowh_lnd(i,j),               &
      &          sncovr_lnd(i,j),                                             &
@@ -1049,7 +1060,7 @@ module lsm_ruc
      &          z0_lnd(i,j), snoalb1d_lnd(i,j), albbck_lnd(i,j),             &
      &          xlai(i,j), landusef(i,:,j), nlcat,                           &
 !  --- mosaic_lu and mosaic_soil are moved to the namelist
-!     &          mosaic_lu, mosaic_soil,                                      &
+     &          mosaic_lu, mosaic_soil,                                      &
      &          soilctop(i,:,j), nscat,                                      &
      &          qsfc_lnd(i,j), qsg_lnd(i,j), qvg_lnd(i,j), qcg_lnd(i,j),     &
      &          dew_lnd(i,j), soilt1_lnd(i,j),                               &
