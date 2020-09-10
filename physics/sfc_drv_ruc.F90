@@ -332,7 +332,7 @@ module lsm_ruc
      &       con_cp, con_rd, con_rv, con_g, con_pi, con_hvap,           &
      &       con_fvirt,                                                 &
      ! for water
-     &       ch_wat, tskin_wat, evap_wat, hflx_wat,                     &
+     &       ch_wat, tskin_wat,                                         &
      ! --- in/outs for ice and land
      &       semis_lnd, semis_ice,                                      &
      &       sncovr1_lnd, weasd_lnd, snwdph_lnd, tskin_lnd, sfalb_lnd,  &
@@ -363,7 +363,8 @@ module lsm_ruc
 !  ---  constant parameters:
       real(kind=kind_phys), parameter :: rhoh2o  = 1000.0
       real(kind=kind_phys), parameter :: stbolt  = 5.670400e-8
-      real(kind=kind_phys), parameter :: cimin   = 0.02 !  --- minimum ice concentration, 0.15 in GFS
+      real(kind=kind_phys), parameter :: cimin   = 0.15  !--- in GFS
+      !real(kind=kind_phys), parameter :: cimin   = 0.02 !--- minimum ice concentration, 0.15 in GFS
       real(kind=kind_phys), parameter :: con_tice = 271.2
 
 !  ---  input:
@@ -381,7 +382,7 @@ module lsm_ruc
      ! for land
      &       cm_lnd, ch_lnd,                                      &
      ! for water
-     &       ch_wat, tskin_wat, evap_wat, hflx_wat,               &
+     &       ch_wat, tskin_wat,                                   &
      ! for ice
      &       cm_ice, ch_ice
 
@@ -491,7 +492,7 @@ module lsm_ruc
 
 
       real (kind=kind_phys) :: xice_threshold
-      real (kind=kind_phys) :: fwat
+      real (kind=kind_phys) :: fwat, qsw, evapw, hfxw
 
       character(len=256) :: llanduse  !< Land-use dataset.  Valid values are :
                                       !! "USGS" (USGS 24/27 category dataset) and
@@ -1351,7 +1352,7 @@ module lsm_ruc
              ! Check if ice fraction is below the minimum value: 15% in GFS
              ! physics.
               if (fice(i) < cimin) then ! cimin - minimal ice fraction
-                write (0,*)'warning: ice fraction is low:', fice(i)
+                        write (0,*)'warning: ice fraction is low:', fice(i)
                 fice(i) = cimin
                 fwat    = 1.0 - cimin
                 write (0,*)'fix ice fraction: reset it to:', fice(i), tskin_wat(i)
@@ -1361,8 +1362,11 @@ module lsm_ruc
             ! uncoupled sea-ice model. Use ice variables for the composite.
               tsurf_ice(i) = tsurf_ice(i) * fice(i) + min(con_tice,tskin_wat(i)) * fwat
               chh_ice(i)   = chh_ice(i) * fice(i) + ch_wat(i) * wind(i) * rho(i) * fwat
-              hflx_ice(i)  = hflx_ice(i) * fice(i) + hflx_wat(i) * fwat
-              evap_ice(i)  = evap_ice(i) * fice(i) + evap_wat(i) * fwat
+              hfxw         = ch_wat(i) * wind(i) * (min(con_tice,tskin_wat(i)) - t1(i))
+              hflx_ice(i)  = hflx_ice(i) * fice(i) + hfxw * fwat
+              qsw          = rslf(prsl1(i),min(con_tice,tskin_wat(i)))
+              evapw        = ch_wat(i) * wind(i) * (qsw - q0(i))
+              evap_ice(i)  = evap_ice(i) * fice(i) + evapw * fwat
               qsurf_ice(i) = q1(i) + evap_ice(i) * rho(i) / chh_ice(i) 
             endif ! flag_ice_uncoupled(i) .and. fice(i) < 1.
           endif ! flag_iter, icy, not frac_grid
