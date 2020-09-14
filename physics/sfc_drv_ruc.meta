@@ -842,28 +842,10 @@
   kind = kind_phys
   intent = in
   optional = F
-[con_rv]
-  standard_name = gas_constant_water_vapor
-  long_name = ideal gas constant for water vapor
-  units = J kg-1 K-1
-  dimensions = ()
-  type = real
-  kind = kind_phys
-  intent = in
-  optional = F
 [con_g]
   standard_name = gravitational_acceleration
   long_name = gravitational acceleration
   units = m s-2
-  dimensions = ()
-  type = real
-  kind = kind_phys
-  intent = in
-  optional = F
-[con_pi]
-  standard_name = pi
-  long_name = ratio of a circle's circumference to its diameter
-  units = none
   dimensions = ()
   type = real
   kind = kind_phys

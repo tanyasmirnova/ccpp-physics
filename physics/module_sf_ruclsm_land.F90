@@ -28,7 +28,7 @@ MODULE module_sf_ruclsm_land
 
    private
 
-   public :: ruc_land, ruclsminit, rslf
+   public :: ruc_land
 
 !> CONSTANT PARAMETERS
 !! @{
@@ -72,7 +72,8 @@ CONTAINS
 !! @{
     SUBROUTINE RUC_land(   spp_lsm,                              &
                    pattern_spp_lsm,field_sf,                     &
-                   DT,init,restart,KTAU,NSL,                     &
+                   init,restart,iter,                            &
+                   DT,KTAU,NSL,                                  &
                    graupelncv,snowncv,rainncv,raincv,            &
                    ZS,RAINBL,SNOW,SNOWH,SNOWC,FRZFRAC,frpcpn,    &
                    rhosnf,precipfr,rhosn,smelt,snevap,           & ! pass it out to module_diagnostics
@@ -80,19 +81,18 @@ CONTAINS
                    GLW,GSW,EMISS,CHKLOWQ, CHS,                   & 
                    FLQC,FLHC,MAVAIL,CANWAT,VEGFRA,ALB,ZNT,       &
                    Z0,SNOALB,ALBBCK,LAI,                         &  !new
-                   mminlu, landusef, nlcat, mosaic_lu,           &
+                   landusef, nlcat, mosaic_lu,                   &
                    mosaic_soil, soilctop, nscat,                 &  !new
                    QSFC,QSG,QVG,QCG,DEW,SOILT1,TSNAV,            &
                    TBOT,IVGTYP,ISLTYP,XLAND,                     &
                    ISWATER,ISICE,XICE,XICE_THRESHOLD,            &
-                   CP,ROVCP,G0,LV,STBOLT,                        &
+                   CP,RD,G0,LV,STBOLT,                           &
                    SOILMOIS,SH2O,SMAVAIL,SMMAX,                  &
                    TSO,SOILT,HFX,QFX,LH,                         &
-                   SFCRUNOFF,UDRUNOFF,ACRUNOFF,SFCEXC,           &
+                   INFILTR,SFCRUNOFF,UDRUNOFF,ACRUNOFF,SFCEXC,   &
                    SFCEVP,GRDFLX,SNOWFALLAC,ACSNOW,SNOM,         &
                    SMFR3D,KEEPFR3DFLAG,                          &
                    myjpbl,shdmin,shdmax,rdlai2d,                 &
-                   ids,ide, jds,jde, kds,kde,                    &
                    ims,ime, jms,jme, kms,kme,                    &
                    its,ite, jts,jte, kts,kte)
 
@@ -178,12 +178,13 @@ CONTAINS
    INTEGER,     PARAMETER            ::     nvegclas=24+3
 
    REAL,       INTENT(IN   )    ::     DT
-   LOGICAL,    INTENT(IN   )    ::     myj, frpcpn, init, restart
+   LOGICAL,    INTENT(IN   )    ::     myjpbl, frpcpn, init, restart
    INTEGER,    INTENT(IN   )    ::     NLCAT, NSCAT, mosaic_lu, mosaic_soil
    INTEGER,    INTENT(IN   )    ::     ktau, iter, nsl, isice, iswater, &
                                        ims,ime, jms,jme, kms,kme, &
                                        its,ite, jts,jte, kts,kte
 
+   INTEGER                                                 ::    spp_lsm
    REAL,    DIMENSION( ims:ime, kms:kme, jms:jme )         ::    pattern_spp_lsm
    REAL,    DIMENSION( ims:ime, kms:kme, jms:jme )         ::    field_sf
    REAL,    DIMENSION( ims:ime, 1  :nsl, jms:jme )         ::    field_sf_loc
@@ -246,7 +247,7 @@ CONTAINS
    REAL,     DIMENSION( ims:ime , 1:nlcat, jms:jme ), INTENT(IN):: LANDUSEF
    REAL,     DIMENSION( ims:ime , 1:nscat, jms:jme ), INTENT(IN):: SOILCTOP
 
-   REAL, INTENT(IN   )          ::     CP,G0,LV,STBOLT,RV,RD,PI, &
+   REAL, INTENT(IN   )          ::     CP,G0,LV,STBOLT,RD, &
                                        XICE_threshold
  
    REAL,       DIMENSION( ims:ime , 1:nsl, jms:jme )           , &
@@ -258,8 +259,8 @@ CONTAINS
                                                             QFX, &
                                                              LH, &
                                                          SFCEVP, &
-                                                        RUNOFF1, &
-                                                        RUNOFF2, &
+                                                      SFCRUNOFF, &
+                                                       UDRUNOFF, &
                                                        ACRUNOFF, &
                                                          GRDFLX, &
                                                          ACSNOW, &
@@ -279,12 +280,11 @@ CONTAINS
 
    REAL,       DIMENSION( its:ite, jts:jte )    ::               &
                                                              PC, &
-                                                      SFCRUNOFF, &
-                                                       UDRUNOFF, &
+                                                        RUNOFF1, &
+                                                        RUNOFF2, &
                                                          EMISSL, &
                                                            ZNTL, &
                                                         LMAVAIL, &
-                                                          SMELT, &
                                                            SNOH, &
                                                           SNFLX, &
                                                            EDIR, &
@@ -312,9 +312,12 @@ CONTAINS
                                              ::    KEEPFR3DFLAG, &
                                                          SMFR3D
 
-   REAL,       DIMENSION( ims:ime, jms:jme ), INTENT(OUT)     :: &
+   REAL,       DIMENSION( ims:ime, jms:jme ), INTENT(INOUT)   :: &
                                                          RHOSNF, & !RHO of snowfall
                                                        PRECIPFR, & ! time-step frozen precip
+                                                          RHOSN, & 
+                                                          SMELT, &
+                                                         SNEVAP, &
                                                      SNOWFALLAC
 !--- soil/snow properties
    REAL,       DIMENSION( ims:ime, jms:jme )      ::             &
@@ -397,15 +400,16 @@ CONTAINS
    REAL      ::  cq,r61,r273,arp,brp,x,evs,eis
    REAL      ::  cropsm
    real      ::  zshalf_dop, zsmain_dop, tso_dop
+   real      ::  rovcp
 
    REAL      ::  meltfactor, ac,as, wb
    INTEGER   ::  NROOT
    INTEGER   ::  ILAND,ISOIL,IFOREST
  
    INTEGER   ::  I,J,K,NZS,NZS1,NDDZS
-   INTEGER   ::  k1,k2
-   logical :: debug_print
    INTEGER   ::  k1,l,k2,kp,km
+
+   logical :: debug_print
    CHARACTER (LEN=132) :: message
 
    REAL,DIMENSION(ims:ime,1:nsl,jms:jme) :: rstoch 
@@ -686,15 +690,15 @@ CONTAINS
          !tgs - 31 mar17 - add safety temperature check in case Thompson MP produces
          !                 frozen precip at T > 273.
          if(frzfrac(i,j) > 0..and. tabs < 273.) then
-           prcpculiq = max(0.,(rainbl(i,j)-rainncv(i,j))*(1.-frzfrac(i,j)))
-           prcpcufr = max(0.,(rainbl(i,j)-rainncv(i,j))*frzfrac(i,j))
+           prcpculiq = max(0.,raincv(i,j)*(1.-frzfrac(i,j)))
+           prcpcufr = max(0.,raincv(i,j)*frzfrac(i,j))
          else
            if(tabs < 273.) then
-             prcpcufr = max(0.,(rainbl(i,j)-rainncv(i,j)))
+             prcpcufr = max(0.,raincv(i,j))
              prcpculiq = 0.
            else
              prcpcufr = 0.
-             prcpculiq = max(0.,(rainbl(i,j)-rainncv(i,j)))
+             prcpcufr = max(0.,raincv(i,j))
            endif  ! tabs < 273.
          endif  ! frzfrac > 0.
          !--- 1*e-3 is to convert from mm/s to m/s
@@ -760,7 +764,7 @@ CONTAINS
 !> - Call soilvegin() to initialize soil and surface properties
      CALL SOILVEGIN  ( debug_print, &
                        soilfrac,nscat,shdmin(i,j),shdmax(i,j),mosaic_lu, mosaic_soil,&
-                       NLCAT,ILAND,ISOIL,iswater,MYJ,IFOREST,lufrac,VEGFRA(I,J),     &
+                       NLCAT,ILAND,ISOIL,iswater,IFOREST,lufrac,VEGFRA(I,J),         &
                        EMISSL(I,J),PC(I,J),ZNT(I,J),LAI(I,J),RDLAI2D,                &
                        QWRTZ,RHOCS,BCLH,DQM,KSAT,PSIS,QMIN,REF,WILT,i,j )
     IF (debug_print ) THEN
@@ -1564,7 +1568,7 @@ print * ,'Soil moisture is below wilting in mixed grassland/cropland category at
        NEWSN=NEWSN*rhowater/rhonewsn ! [m] of snow depth
 
        !-- SNOW on the ground including fresh snow
-       IF(SNHEI.GT.0.0) THEN
+       IF(SNHEI.GT.0.0001) THEN
        !-- Land-use category should be changed to snow/ice for grid points with snow>0
          ILAND=ISICE
 
@@ -1761,6 +1765,7 @@ print * ,'Soil moisture is below wilting in mixed grassland/cropland category at
 
          CALL SOIL(spp_lsm,rstochcol,fieldcol_sf,                 &
 !--- input variables
+           debug_print,                                           & 
            i,j,ilands,isoil,delt,ktau,conflx,nzs,nddzs,nroot,     &
            PRCPMS,RAINF,PATM,QVATM,QCATM,GLW,GSWnew,gswin,        &
            EMISS_snowfree,RNET,QKMS,TKMS,PC,csts,                 &
@@ -2391,7 +2396,7 @@ print * ,'Soil moisture is below wilting in mixed grassland/cropland category at
           fex=max(fex,0.01)
           psit=psis*fex ** (-bclh)
           psit = max(-1.e5, psit)
-          alfa=min(1.,exp(g*psit/r_v/SOILT))
+          alfa=min(1.,exp(g0_p*psit/r_v/SOILT))
         !endif
         !--20jun18 - at this time alfa is not used, and qvg is 
         !--computed from the energy budget.
@@ -2418,8 +2423,8 @@ print * ,'Soil moisture is below wilting in mixed grassland/cropland category at
           soilres=0.25*(1.-cos(piconst*fex_fc))**2.
         endif
     IF ( debug_print ) THEN
-     print *,'fex,psit,psis,bclh,g,r_v,soilt,alfa,mavail,soilmois(1),fc,ref,soilres,fex_fc', &
-              fex,psit,psis,bclh,g,r_v,soilt,alfa,mavail,soilmois(1),fc,ref,soilres,fex_fc
+     print *,'fex,psit,psis,bclh,g0_p,r_v,soilt,alfa,mavail,soilmois(1),fc,ref,soilres,fex_fc', &
+              fex,psit,psis,bclh,g0_p,r_v,soilt,alfa,mavail,soilmois(1),fc,ref,soilres,fex_fc
     endif
 
 !**************************************************************
@@ -2887,7 +2892,7 @@ print * ,'Soil moisture is below wilting in mixed grassland/cropland category at
         CVW=CW
         XLMELT=3.35E+5
         !-- heat of water vapor sublimation
-        XLVm=XLV+XLMELT
+        XLVm=xls
 
         !--- SNOW flag -- ISICE
         ! ILAND=isice
@@ -3017,7 +3022,7 @@ print * ,'Soil moisture is below wilting in mixed grassland/cropland category at
 !******************************************************************
           CALL SOILPROP(spp_lsm,rstochcol,fieldcol_sf,           &
 !--- input variables
-               debug_print,zs,fwsat,lwsat,tav,keepfr,            &
+               debug_print,nzs,fwsat,lwsat,tav,keepfr,           &
                soilmois,soiliqw,soilice,                         &
                soilmoism,soiliqwm,soilicem,                      &
 !--- soil fixed fields
@@ -3915,10 +3920,12 @@ print *, 'SNOWTEMP: SNHEI,SNTH,SOILT1: ',SNHEI,SNTH,SOILT1,soilt
      !--- snow is too thin to be treated separately, therefore it
      !--- is combined with the first soil layer.
         snprim=SNHEI+zsmain(2)
+        write (0,*) 'snhei,snth,snprim',snhei,snth,snprim
         fsn=SNHEI/snprim
         fso=1.-fsn
         soilt1=tso(1)
         tsob=tso(2)
+        write (0,*) 'zsmain, zshalf, snprim', zsmain,zshalf,snprim
         XSN = DELT/2./((zshalf(3)-zsmain(2))+0.5*snprim)
         DDZSN = XSN /snprim
         X1SN = DDZSN * (fsn*thdifsn+fso*thdif(1))
@@ -4970,7 +4977,7 @@ print *, 'SNOWTEMP: SNHEI,SNTH,SOILT1: ',SNHEI,SNTH,SOILT1,soilt
 !--- input variables
 
    LOGICAL,  INTENT(IN   )   ::  debug_print
-   INTEGER,  INTENT(IN   )   ::  nroot,nzs,iland
+   INTEGER,  INTENT(IN   )   ::  i, j, nroot, nzs, iland
 
    REAL                                                        , &
             INTENT(IN   )    ::                GSWin, TABS, lai
@@ -5181,7 +5188,7 @@ print *, 'SNOWTEMP: SNHEI,SNTH,SOILT1: ',SNHEI,SNTH,SOILT1,soilt
      SUBROUTINE SOILVEGIN  ( debug_print,                            &
                              soilfrac,nscat,shdmin, shdmax,          &
                              mosaic_lu, mosaic_soil,                 &
-                     NLCAT,IVGTYP,ISLTYP,iswater,MYJ,                &
+                     NLCAT,IVGTYP,ISLTYP,iswater,                    &
                      IFOREST,lufrac,vegfrac,EMISS,PC,ZNT,LAI,RDLAI2D,&
                      QWRTZ,RHOCS,BCLH,DQM,KSAT,PSIS,QMIN,REF,WILT,I,J)
 

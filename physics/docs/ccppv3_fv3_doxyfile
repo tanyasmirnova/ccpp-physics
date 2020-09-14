@@ -235,6 +235,7 @@ INPUT                  =  pdftxt/mainpage.txt     \
 ###                        ../module_sf_mynn.F90  \
                         ../sfc_drv_ruc.F90   \
                         ../module_sf_ruclsm.F90    \
+                        ../module_sf_ruclsm_land.F90    \
                         ../namelist_soilveg_ruc.F90 \
                         ../set_soilveg_ruc.F90   \
                         ../module_soil_pre.F90   \

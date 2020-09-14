@@ -73,7 +73,7 @@ CONTAINS
                    QSFC,QSG,QVG,QCG,DEW,SOILT1,TSNAV,            &
                    TBOT,IVGTYP,ISLTYP,XLAND,                     &
                    ISWATER,ISICE,XICE,XICE_THRESHOLD,            &
-                   CP,RV,RD,G0,PI,LV,STBOLT,                     &
+                   CP,RD,G0,LV,STBOLT,                           &
                    SOILMOIS,SH2O,SMAVAIL,SMMAX,                  &
                    TSO,SOILT,HFX,QFX,LH,INFILTR,                 &
                    RUNOFF1,RUNOFF2,ACRUNOFF,SFCEXC,              &
@@ -235,7 +235,7 @@ CONTAINS
    REAL,     DIMENSION( ims:ime , 1:nlcat, jms:jme ), INTENT(IN):: LANDUSEF
    REAL,     DIMENSION( ims:ime , 1:nscat, jms:jme ), INTENT(IN):: SOILCTOP
 
-   REAL, INTENT(IN   )          ::     CP,G0,LV,STBOLT,RV,RD,PI, &
+   REAL, INTENT(IN   )          ::     CP,G0,LV,STBOLT,RD,       &
                                        XICE_threshold
  
    REAL,       DIMENSION( ims:ime , 1:nsl, jms:jme )           , &

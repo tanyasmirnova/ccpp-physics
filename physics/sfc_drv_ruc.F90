@@ -9,6 +9,7 @@ module lsm_ruc
         use set_soilveg_ruc_mod,  only: set_soilveg_ruc
         use module_soil_pre
         use module_sf_ruclsm
+        use module_sf_ruclsm_land
 
         implicit none
 
@@ -328,9 +329,9 @@ module lsm_ruc
      &       prsl1, zf, wind, shdmin, shdmax, alvwf, alnwf,             &
      &       srflag, snoalb, isot, ivegsrc, nlunit,                     &
      &       fice, smcwlt2, smcref2,                                    &
-     &       smc, stc, slc,               &
+     &       smc, stc, slc,                                             &
      ! --- constants
-     &       con_cp, con_rd, con_rv, con_g, con_pi, con_hvap,           &
+     &       con_cp, con_rd, con_g, con_hvap,                           &
      &       con_fvirt,                                                 &
      ! for water
      &       ch_wat, tskin_wat,                                         &
@@ -388,8 +389,7 @@ module lsm_ruc
      &       cm_ice, ch_ice
 
       real (kind=kind_phys),  intent(in) :: delt
-      real (kind=kind_phys),  intent(in) :: con_cp, con_rv, con_g,       &
-                                            con_pi, con_rd,              &
+      real (kind=kind_phys),  intent(in) :: con_cp, con_g, con_rd,&
                                             con_hvap, con_fvirt
 
       logical, dimension(im), intent(in) :: flag_iter, flag_guess
@@ -484,7 +484,8 @@ module lsm_ruc
      &     soilt_lnd, tbot,                                             &
      &     xlai, swdn, z0_lnd, znt_lnd, rhosnfr, infiltr,               &
      &     precipfr, snfallac_lnd, acsn,                                &
-     &     qsfc_lnd, qsg_lnd, qvg_lnd, qcg_lnd, soilt1_lnd, chklowq
+     &     qsfc_lnd, qsg_lnd, qvg_lnd, qcg_lnd, soilt1_lnd, chklowq,    &
+     &     rhosn_lnd, smelt_lnd, snevap_lnd
      ! ice
       real (kind=kind_phys),dimension (im,1)        ::                  &
      &     albbck_ice, alb_ice, chs_ice, flhc_ice, flqc_ice,            &
@@ -741,8 +742,10 @@ module lsm_ruc
           acceta(i,j)       = 0.0
           ssoil_lnd(i,j)    = 0.0
           ssoil_ice(i,j)    = 0.0
+          smelt_lnd(i,j)    = 0.0
           snomlt_lnd(i,j)   = 0.0
           snomlt_ice(i,j)   = 0.0
+          snevap_lnd(i,j)   = 0.0
           infiltr(i,j)      = 0.0
           runoff1(i,j)      = 0.0
           runoff2(i,j)      = 0.0
@@ -750,6 +753,7 @@ module lsm_ruc
           snfallac_lnd(i,j) = 0.0
           snfallac_ice(i,j) = 0.0
           rhosnfr(i,j)      = 0.0
+          rhosn_lnd(i,j)    = 0.0
           precipfr(i,j)     = 0.0
 
         endif
@@ -980,6 +984,13 @@ module lsm_ruc
             sneqv_lnd(i,j) = 300. * snowh_lnd(i,j)
           endif
         endif
+        !-- diagnose snow density from SWE and snow height
+        if(sneqv_lnd(i,j).gt.0. .and. snowh_lnd(i,j).gt.0.) then
+          rhosn_lnd(i,j) = max(58.8,min(500.,sneqv_lnd(i,j)/snowh_lnd(i,j)) )
+        else
+          rhosn_lnd(i,j) = 300.
+        endif
+
         !  ---- ... outside sflx, roughness uses cm as unit
         z0_lnd(i,j)  = z0rl_lnd(i)/100.
         znt_lnd(i,j) = z0rl_lnd(i)/100.
@@ -1022,10 +1033,8 @@ module lsm_ruc
             write (0,*)'isice=',isice
             write (0,*)'xice_threshold=',xice_threshold
             write (0,*)'con_cp=',con_cp
-            write (0,*)'con_rv=',con_rv
             write (0,*)'con_rd=',con_rd
             write (0,*)'con_g=',con_g
-            write (0,*)'con_pi=',con_pi
             write (0,*)'con_hvap=',con_hvap
             write (0,*)'stbolt=',stbolt
             write (0,*)'smsoil(i,:,j)=',i,j,smsoil(i,:,j)
@@ -1042,14 +1051,15 @@ module lsm_ruc
         endif
 
 !> - Call RUC LSM lsmruc() for land. 
-      call ruc_land ( spp_lsm_loc, pattern_spp_lsm, field_sf,                &
+      call ruc_land ( spp_lsm, pattern_spp_lsm, field_sf,                    &
      &          flag_init, flag_restart, iter,                               &
-     &          delt, dt, nsoil,                                             &
+     &          delt, kdt, nsoil,                                            &
      &          graupelncv(i,j), snowncv(i,j), rainncv(i,j), raincv(i,j),    &
      &          zs, prcp(i,j), sneqv_lnd(i,j), snowh_lnd(i,j),               &
      &          sncovr_lnd(i,j),                                             &
      &          ffrozp(i,j), frpcpn,                                         &
-     &          rhosnfr(i,j), precipfr(i,j),                                 &
+     &          rhosnfr(i,j), precipfr(i,j), rhosn_lnd(i,j),                 &
+     &          smelt_lnd(i,j), snevap_lnd(i,j),                             &
 !  ---  inputs:
      &          conflx2(i,1,j), sfcprs(i,1,j), sfctmp(i,1,j), q2(i,1,j),     &
      &          qcatm(i,1,j), rho2(i,1,j),                                   &
@@ -1067,7 +1077,7 @@ module lsm_ruc
      &          tsnav_lnd(i,j), tbot(i,j), vtype_lnd(i,j), stype_lnd(i,j),   &
      &          xland(i,j), iswater, isice, xice_lnd(i,j), xice_threshold,   & !  xice=0. for the land portion of grid area
 !  ---  constants
-     &          con_cp, con_rv, con_rd, con_g, con_pi, con_hvap, stbolt,     &
+     &          con_cp, con_rd, con_g, con_hvap, stbolt,                     &
 !  ---  input/outputs:
      &          smsoil(i,:,j), slsoil(i,:,j), soilm(i,j), smmax(i,j),        &
      &          stsoil(i,:,j), soilt_lnd(i,j),                               &
@@ -1291,7 +1301,7 @@ module lsm_ruc
      &          tsnav_ice(i,j), tbot(i,j), vtype_ice(i,j), stype_ice(i,j),   &
      &          xland(i,j), iswater, isice, xice(i,j), xice_threshold,       &
 !  ---  constants
-     &          con_cp, con_rv, con_rd, con_g, con_pi, con_hvap, stbolt,     &
+     &          con_cp, con_rd, con_g, con_hvap, stbolt,                     &
 !  ---  input/outputs:
      &          smsoil(i,:,j), slsoil(i,:,j), soilm(i,j), smmax(i,j),        &
      &          stsice(i,:,j), soilt_ice(i,j),                               &
