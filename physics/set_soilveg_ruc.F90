@@ -32,7 +32,8 @@
      &  RSMAX_DATA, BARE, NATURAL, CROP, URBAN,                         &
      &  DEFINED_VEG, DEFINED_SOIL, DEFINED_SLOPE,                       &
      &  BB, DRYSMC, HC, MAXSMC, REFSMC, SATPSI, SATDK, SATDW,           &
-     &  WLTSMC, QTZ, mosaic_soil, mosaic_lu, REFSMCnoah, WLTSMCnoah
+     &  WLTSMC, QTZ, mosaic_soil, mosaic_lu, REFSMCnoah, WLTSMCnoah,    &
+     &  MAXSMCnoah
 
       if(ivet.eq.2) then
 ! Using umd veg classification
