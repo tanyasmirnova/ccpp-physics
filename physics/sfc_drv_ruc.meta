@@ -582,6 +582,24 @@
   type = logical
   intent = in
   optional = F
+[alb_ice_snowfree]
+  standard_name =surface_snow_free_albedo_over_ice
+  long_name = surface snow-free albedo over ice
+  units = frac
+  dimensions = (horizontal_loop_extent)
+  type = real
+  kind = kind_phys
+  intent = inout
+  optional = F
+[alb_ice_snow]
+  standard_name =surface_snow_albedo_over_ice
+  long_name = surface snow albedo over ice
+  units = frac
+  dimensions = (horizontal_loop_extent)
+  type = real
+  kind = kind_phys
+  intent = inout
+  optional = F
 [rainnc]
   standard_name = lwe_thickness_of_explicit_rainfall_amount_from_previous_timestep
   long_name = explicit rainfall from previous timestep
@@ -832,9 +850,18 @@
   kind = kind_phys
   intent = in
   optional = F
+[semisbase]
+  standard_name = baseline_surface_longwave_emissivity
+  long_name = baseline surface lw emissivity in fraction
+  units = frac
+  dimensions = (horizontal_loop_extent)
+  type = real
+  kind = kind_phys
+  intent = inout
+  optional = F
 [semis_lnd]
-  standard_name = surface_longwave_emissivity_over_land_interstitial
-  long_name = surface lw emissivity in fraction over land (temporary use as interstitial)
+  standard_name = surface_longwave_emissivity_over_land
+  long_name = surface lw emissivity in fraction over land 
   units = frac
   dimensions = (horizontal_loop_extent)
   type = real
@@ -842,8 +869,26 @@
   intent = inout
   optional = F
 [semis_ice]
-  standard_name = surface_longwave_emissivity_over_ice_interstitial
-  long_name = surface lw emissivity in fraction over ice (temporary use as interstitial)
+  standard_name = surface_longwave_emissivity_over_ice
+  long_name = surface lw emissivity in fraction over ice
+  units = frac
+  dimensions = (horizontal_loop_extent)
+  type = real
+  kind = kind_phys
+  intent = inout
+  optional = F
+[sfalb_lnd]
+  standard_name = surface_diffused_shortwave_albedo_over_land
+  long_name = mean surface diffused sw albedo over land
+  units = frac
+  dimensions = (horizontal_loop_extent)
+  type = real
+  kind = kind_phys
+  intent = inout
+  optional = F
+[sfalb_ice]
+  standard_name = surface_diffused_shortwave_albedo_over_ice
+  long_name = mean surface diffused sw albedo over ice
   units = frac
   dimensions = (horizontal_loop_extent)
   type = real

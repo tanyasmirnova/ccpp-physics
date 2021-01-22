@@ -24,7 +24,7 @@ contains
 !> \section arg_table_GFS_surface_composites_pre_run Argument Table
 !! \htmlinclude GFS_surface_composites_pre_run.html
 !!
-   subroutine GFS_surface_composites_pre_run (im, lkm, frac_grid, flag_cice, cplflx, cplwav2atm,                          &
+   subroutine GFS_surface_composites_pre_run (im, flag_init, lkm, lsm, lsm_ruc, frac_grid, flag_cice, cplflx, cplwav2atm, &
                                  landfrac, lakefrac, lakedepth, oceanfrac, frland,                                        &
                                  dry, icy, lake, ocean, wet, hice, cice, zorl, zorlo, zorll, zorli, zorl_wat,             &
                                  zorl_lnd, zorl_ice, snowd, snowd_wat, snowd_lnd, snowd_ice, tprcp, tprcp_wat,            &
@@ -32,14 +32,16 @@ contains
                                  weasd, weasd_wat, weasd_lnd, weasd_ice, ep1d_ice, tsfc, tsfco, tsfcl, tsfc_wat,          &
                                  tsfc_lnd, tsfc_ice, tisfc, tice, tsurf, tsurf_wat, tsurf_lnd, tsurf_ice,                 &
                                  gflx_ice, tgice, islmsk, islmsk_cice, slmsk, semis_rad, semis_wat, semis_lnd, semis_ice, &
-                                 qss, qss_wat, qss_lnd, qss_ice, hflx, hflx_wat, hflx_lnd, hflx_ice,                      &
+                                 emis_lnd, emis_ice, qss, qss_wat, qss_lnd, qss_ice, hflx, hflx_wat, hflx_lnd, hflx_ice,  &
                                  min_lakeice, min_seaice, errmsg, errflg)
 
       implicit none
 
       ! Interface variables
       integer,                             intent(in   ) :: im, lkm
+      integer,                             intent(in   ) :: lsm, lsm_ruc
       logical,                             intent(in   ) :: frac_grid, cplflx, cplwav2atm
+      logical,                             intent(in   ) :: flag_init
       logical, dimension(im),              intent(inout) :: flag_cice
       logical,              dimension(im), intent(inout) :: dry, icy, lake, ocean, wet
       real(kind=kind_phys), dimension(im), intent(in   ) :: landfrac, lakefrac, lakedepth, oceanfrac
@@ -57,6 +59,7 @@ contains
       integer,              dimension(im), intent(inout) :: islmsk, islmsk_cice
       real(kind=kind_phys), dimension(im), intent(in   ) :: semis_rad
       real(kind=kind_phys), dimension(im), intent(inout) :: semis_wat, semis_lnd, semis_ice, slmsk
+      real(kind=kind_phys), dimension(im), intent(inout) :: emis_lnd, emis_ice
       real(kind=kind_phys),                intent(in   ) :: min_lakeice, min_seaice
 
       real(kind=kind_phys), parameter :: timin = 173.0_kind_phys  ! minimum temperature allowed for snow/ice
@@ -195,7 +198,15 @@ contains
 !          snowd_wat(i) = snowd(i)
            weasd_wat(i) = zero
            snowd_wat(i) = zero
-           semis_wat(i) = 0.984_kind_phys
+           !-- reference emiss value for surface emissivity in setemis
+           !   1-open water, 2-grass/shrub land, 3-bare soil, tundra,
+           !   4-sandy desert, 5-rocky desert, 6-forest, 7-ice, 8-snow
+           !data  emsref / 0.97, 0.95, 0.94, 0.90, 0.93, 0.96, 0.96, 0.99 /
+           if(lsm == lsm_ruc) then
+             semis_wat(i) = 0.97_kind_phys ! consistent with setemis
+           else
+             semis_wat(i) = 0.984_kind_phys
+           endif
              qss_wat(i) = qss(i)
             hflx_wat(i) = hflx(i)
         endif
@@ -206,7 +217,16 @@ contains
             tsfc_lnd(i) = tsfcl(i)
            tsurf_lnd(i) = tsfcl(i)
            snowd_lnd(i) = snowd(i)
-           semis_lnd(i) = semis_rad(i)
+           if (flag_init) then
+             semis_lnd(i) = semis_rad(i)
+           else
+             if(lsm == lsm_ruc) then
+             !-- use emis_lnd computed in RUC LSM with snow/mosaic effect
+               semis_lnd(i) = emis_lnd(i)
+             else
+               semis_lnd(i) = semis_rad(i) 
+             endif
+           endif
              qss_lnd(i) = qss(i)
             hflx_lnd(i) = hflx(i)
         end if
@@ -219,7 +239,16 @@ contains
            snowd_ice(i) = snowd(i)
             ep1d_ice(i) = zero
             gflx_ice(i) = zero
-           semis_ice(i) = 0.95_kind_phys
+           if (flag_init) then
+             semis_ice(i) = 0.95_kind_phys
+           else
+             if(lsm == lsm_ruc) then
+             !-- use emis_ice from RUC LSM with snow effect
+               semis_ice(i) = emis_ice(i)
+             else
+               semis_ice(i) = 0.95_kind_phys
+             endif
+           endif
              qss_ice(i) = qss(i)
             hflx_ice(i) = hflx(i)
         endif
@@ -351,8 +380,8 @@ contains
 !!
 #endif
    subroutine GFS_surface_composites_post_run (                                                                                   &
-      im, kice, km, cplflx, cplwav2atm, frac_grid, flag_cice, islmsk, dry, wet, icy, landfrac, lakefrac, oceanfrac,               &
-      zorl, zorlo, zorll, zorli, zorl_wat, zorl_lnd, zorl_ice,                                                                    &
+      im, lsm, lsm_ruc, kice, km, cplflx, cplwav2atm, frac_grid, flag_cice, islmsk, dry, wet, icy, landfrac, lakefrac, oceanfrac, &
+      zorl, zorlo, zorll, zorli, zorl_wat, zorl_lnd, zorl_ice, semis_rad, semis_wat, semis_lnd, semis_ice, emis_lnd, emis_ice,    &
       cd, cd_wat, cd_lnd, cd_ice, cdq, cdq_wat, cdq_lnd, cdq_ice, rb, rb_wat, rb_lnd, rb_ice, stress, stress_wat, stress_lnd,     &
       stress_ice, ffmm, ffmm_wat, ffmm_lnd, ffmm_ice, ffhh, ffhh_wat, ffhh_lnd, ffhh_ice, uustar, uustar_wat, uustar_lnd,         &
       uustar_ice, fm10, fm10_wat, fm10_lnd, fm10_ice, fh2, fh2_wat, fh2_lnd, fh2_ice, tsurf, tsurf_wat, tsurf_lnd, tsurf_ice,     &
@@ -363,7 +392,7 @@ contains
 
       implicit none
 
-      integer,                              intent(in) :: im, kice, km
+      integer,                              intent(in) :: im, lsm, lsm_ruc, kice, km
       logical,                              intent(in) :: cplflx, frac_grid, cplwav2atm
       logical, dimension(im),               intent(in) :: flag_cice, dry, wet, icy
       integer, dimension(im),               intent(in) :: islmsk
@@ -373,10 +402,10 @@ contains
         fm10_wat, fm10_lnd, fm10_ice, fh2_wat, fh2_lnd, fh2_ice, tsurf_wat, tsurf_lnd, tsurf_ice, cmm_wat, cmm_lnd, cmm_ice,    &
         chh_wat, chh_lnd, chh_ice, gflx_wat, gflx_lnd, gflx_ice, ep1d_wat, ep1d_lnd, ep1d_ice, weasd_wat, weasd_lnd, weasd_ice, &
         snowd_wat, snowd_lnd, snowd_ice,tprcp_wat, tprcp_lnd, tprcp_ice, evap_wat, evap_lnd, evap_ice, hflx_wat, hflx_lnd,      &
-        hflx_ice, qss_wat, qss_lnd, qss_ice, tsfc_wat, tsfc_lnd, tsfc_ice
+        hflx_ice, qss_wat, qss_lnd, qss_ice, tsfc_wat, tsfc_lnd, tsfc_ice, semis_wat, semis_lnd, semis_ice, emis_lnd, emis_ice
 
       real(kind=kind_phys), dimension(im),  intent(inout) :: zorl, zorlo, zorll, zorli, cd, cdq, rb, stress, ffmm, ffhh, uustar, fm10, &
-        fh2, tsurf, cmm, chh, gflx, ep1d, weasd, snowd, tprcp, evap, hflx, qss, tsfc, tsfco, tsfcl, tisfc
+        fh2, tsurf, cmm, chh, gflx, ep1d, weasd, snowd, tprcp, evap, hflx, qss, tsfc, tsfco, tsfcl, tisfc, semis_rad
 
       real(kind=kind_phys), dimension(im),  intent(in   ) :: tice ! interstitial sea ice temperature
       real(kind=kind_phys), dimension(im),  intent(inout) :: hice, cice
@@ -409,6 +438,11 @@ contains
           txo   = max(zero, wfrac-txi)   ! txo = open water fraction
 
           zorl(i)   = txl*zorl_lnd(i)   + txi*zorl_ice(i)   + txo*zorl_wat(i)
+          if(lsm == lsm_ruc) then
+          !-- composite emissivity using LSM emissivity output for land and ice with
+          !-- snow/mosaic effects
+            semis_rad(i)   = txl*emis_lnd(i)   + txi*emis_ice(i)   + txo*semis_wat(i)
+          endif
           cd(i)     = txl*cd_lnd(i)     + txi*cd_ice(i)     + txo*cd_wat(i)
           cdq(i)    = txl*cdq_lnd(i)    + txi*cdq_ice(i)    + txo*cdq_wat(i)
           rb(i)     = txl*rb_lnd(i)     + txi*rb_ice(i)     + txo*rb_wat(i)
@@ -497,6 +531,7 @@ contains
         do i=1,im
           if (islmsk(i) == 1) then
             zorl(i)   = zorl_lnd(i)
+            if(lsm == lsm_ruc) semis_rad(i) = emis_lnd(i)
             cd(i)     = cd_lnd(i)
             cdq(i)    = cdq_lnd(i)
             rb(i)     = rb_lnd(i)
@@ -525,6 +560,7 @@ contains
             cice(i)   = zero
           elseif (islmsk(i) == 0) then
             zorl(i)   = zorl_wat(i)
+            if(lsm == lsm_ruc) semis_rad(i) = semis_wat(i)
             cd(i)     = cd_wat(i)
             cdq(i)    = cdq_wat(i)
             rb(i)     = rb_wat(i)
@@ -553,6 +589,7 @@ contains
             cice(i)   = zero
           else ! islmsk(i) == 2
             zorl(i)   = zorl_ice(i)
+            if(lsm == lsm_ruc) semis_rad(i) = emis_ice(i)
             cd(i)     = cd_ice(i)
             cdq(i)    = cdq_ice(i)
             rb(i)     = rb_ice(i)
@@ -578,6 +615,9 @@ contains
             if (.not. flag_cice(i)) then
 !             tisfc(i) = tice(i) ! over lake ice (and sea ice when uncoupled)
               zorl(i)  = cice(i) * zorl_ice(i)   + (one - cice(i)) * zorl_wat(i)
+              if(lsm == lsm_ruc) then
+                semis_rad(i)  = cice(i) * emis_ice(i)   + (one - cice(i)) * semis_wat(i)
+              endif
               tsfc(i)  = tsfc_ice(i) ! over lake (and ocean when uncoupled)
             elseif (wet(i)) then
               if (cice(i) >= min_seaice) then ! this was already done for lake ice in sfc_sice
@@ -590,6 +630,7 @@ contains
                 qss(i)    = txi * qss_ice(i)    + txo * qss_wat(i)
                 ep1d(i)   = txi * ep1d_ice(i)   + txo * ep1d_wat(i)
                 zorl(i)   = txi * zorl_ice(i)   + txo * zorl_wat(i)
+                if(lsm == lsm_ruc) semis_rad(i) = txi * emis_ice(i) + txo * semis_wat(i)
               else
                 evap(i)   = evap_wat(i)
                 hflx(i)   = hflx_wat(i)
@@ -598,6 +639,7 @@ contains
                 qss(i)    = qss_wat(i)
                 ep1d(i)   = ep1d_wat(i)
                 zorl(i)   = zorl_wat(i)
+                if(lsm == lsm_ruc) semis_rad(i) = semis_wat(i)
               endif
             endif
             if (wet(i)) then

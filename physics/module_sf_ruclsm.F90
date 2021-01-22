@@ -64,7 +64,7 @@ CONTAINS
                    graupelncv,snowncv,rainncv,raincv,            &
                    ZS,RAINBL,SNOW,SNOWH,SNOWC,FRZFRAC,frpcpn,    &
                    rhosnf,precipfr,                              &
-                   Z3D,P8W,T3D,QV3D,QC3D,RHO3D,                  &
+                   Z3D,P8W,T3D,QV3D,QC3D,RHO3D,EMISBCK,          &
                    GLW,GSW,EMISS,CHKLOWQ, CHS,                   &
                    FLQC,FLHC,MAVAIL,CANWAT,VEGFRA,ALB,ZNT,       &
                    Z0,SNOALB,ALBBCK,LAI,                         & 
@@ -220,6 +220,7 @@ CONTAINS
                                                             ALB, &
                                                             LAI, &
                                                           EMISS, &
+                                                        EMISBCK, &
                                                          MAVAIL, & 
                                                          SFCEXC, &
                                                             Z0 , &
@@ -706,11 +707,18 @@ CONTAINS
     ENDIF
  
 !> - Call soilvegin() to initialize soil and surface properties
-     CALL SOILVEGIN  ( debug_print, &
+     IF((XLAND(I,J)-1.5).LT.0..and. xice(i,j).lt.xice_threshold)THEN
+     !-- land
+       CALL SOILVEGIN  ( debug_print, &
                        soilfrac,nscat,shdmin(i,j),shdmax(i,j),mosaic_lu, mosaic_soil,&
                        NLCAT,ILAND,ISOIL,iswater,MYJ,IFOREST,lufrac,VEGFRA(I,J),     &
                        EMISSL(I,J),PC(I,J),ZNT(I,J),LAI(I,J),RDLAI2D,                &
                        QWRTZ,RHOCS,BCLH,DQM,KSAT,PSIS,QMIN,REF,WILT,i,j )
+
+       !-- update background emissivity for land points, can have vegetation mosaic effect
+       EMISBCK(I,J) = EMISSL(I,J)
+     ENDIF
+
     IF (debug_print ) THEN
       if(init) &
          print *,'after SOILVEGIN - z0,znt(1,26),lai(1,26)',z0(i,j),znt(i,j),lai(i,j)
@@ -839,12 +847,13 @@ CONTAINS
             ISOIL = 16 ! STATSGO
         endif
             ZNT(I,J) = 0.011
-            snoalb(i,j) = 0.75
+            ! in FV3 albedo and emiss are defined for ice
+            !snoalb(i,j) = snoalb(i,j)
+            emissl(i,j) = emisbck(i,j) ! no snow impact, old 0.98 used in WRF 
             dqm = 1.
             ref = 1.
             qmin = 0.
             wilt = 0.
-            emissl(i,j) = 0.98 
 
            patmb=P8w(i,1,j)*1.e-2
            qvg  (i,j) = QSN(SOILT(i,j),TBQ)/PATMB
@@ -905,7 +914,7 @@ CONTAINS
                 RHOSN,RHONEWSN,RHOSNFALL,                        &
                 snowrat,grauprat,icerat,curat,                   &
                 PATM,TABS,QVATM,QCATM,RHO,                       &
-                GLW(I,J),GSW(I,J),EMISSL(I,J),                   &
+                GLW(I,J),GSW(I,J),EMISSL(I,J),EMISBCK(I,J),      &
                 QKMS,TKMS,PC(I,J),LMAVAIL(I,J),                  &
                 canwatr,vegfra(I,J),alb(I,J),znt(I,J),           &
                 snoalb(i,j),albbck(i,j),lai(i,j),                &   !new
@@ -1046,7 +1055,7 @@ print * ,'Soil moisture is below wilting in mixed grassland/cropland category at
       endif
     ENDIF
 
-        if(snow(i,j)==0.) EMISSL(i,j) = LEMITBL(IVGTYP(i,j))
+        if(snow(i,j)==0.) EMISSL(i,j) = EMISBCK(i,j)
         EMISS (I,J) = EMISSL(I,J)
 ! SNOW is in [mm], SNWE is in [m]; CANWAT is in mm, CANWATR is in m
         SNOW   (i,j) = SNWE*1000.
@@ -1172,7 +1181,7 @@ endif
                 RHOSN,RHONEWSN,RHOSNFALL,                        &
                 snowrat,grauprat,icerat,curat,                   &
                 PATM,TABS,QVATM,QCATM,rho,                       &
-                GLW,GSW,EMISS,QKMS,TKMS,PC,                      &
+                GLW,GSW,EMISS,EMISBCK,QKMS,TKMS,PC,              &
                 MAVAIL,CST,VEGFRA,ALB,ZNT,                       &
                 ALB_SNOW,ALB_SNOW_FREE,lai,                      &
                 MYJ,SEAICE,ISICE,                                &
@@ -1221,6 +1230,7 @@ endif
 !--- 2-D variables
    REAL                                                        , &
             INTENT(INOUT)    ::                           EMISS, &
+                                                        EMISBCK, &
                                                          MAVAIL, &
                                                        SNOWFRAC, &
                                                        ALB_SNOW, &
@@ -1423,8 +1433,8 @@ endif
         GSWin=GSW/(1.-alb)
         ALBice=ALB_SNOW_FREE
         ALBsn=alb_snow
-        EMISSN = 0.98
-        EMISS_snowfree = LEMITBL(IVGTYP)
+        EMISSN = 0.99 ! from setemis, from WRF - 0.98
+        EMISS_snowfree = EMISBCK ! LEMITBL(IVGTYP)
 
 !--- sea ice properties
 !--- N.N Zubov "Arctic Ice"
@@ -1725,8 +1735,9 @@ endif
          ALBsn   = MAX(keep_snow_albedo*alb_snow,               &
                    MIN((albice + (alb_snow - albice) * snowfrac), alb_snow))
          Emiss   = MAX(keep_snow_albedo*emissn,                 &
+                   !-- emiss_snowfree=0.96 in setemis
                    MIN((emiss_snowfree +                        &
-           (emissn - emiss_snowfree) * snowfrac), emissn))
+                   (emissn - emiss_snowfree) * snowfrac), emissn))
      endif
 
     IF (debug_print ) THEN

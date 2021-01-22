@@ -15,6 +15,30 @@
   type = logical
   intent = in
   optional = F
+[flag_init]
+  standard_name = flag_for_first_time_step
+  long_name = flag signaling first time step for time integration loop
+  units = flag
+  dimensions = ()
+  type = logical
+  intent = in
+  optional = F
+[lsm]
+  standard_name = flag_for_land_surface_scheme
+  long_name = flag for land surface model
+  units = flag
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[lsm_ruc]
+  standard_name = flag_for_ruc_land_surface_scheme
+  long_name = flag for RUC land surface model
+  units = flag
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
 [nCol]
   standard_name = horizontal_loop_extent
   long_name = horizontal loop extent

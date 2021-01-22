@@ -12,9 +12,12 @@
 !> \section arg_table_rrtmg_sw_pre_run Argument Table
 !! \htmlinclude rrtmg_sw_pre_run.html
 !!
-      subroutine rrtmg_sw_pre_run (im, lndp_type, n_var_lndp, lsswr, lndp_var_list, lndp_prt_list, tsfg, tsfa, coszen,     &
-        alb1d, slmsk, snowd, sncovr, snoalb, zorl, hprime, alvsf, alnsf, alvwf,&
-        alnwf, facsf, facwf, fice, tisfc, sfalb, nday, idxday, sfcalb1,        &
+      subroutine rrtmg_sw_pre_run (im, lndp_type, n_var_lndp, lsswr,    &
+        lndp_var_list, lndp_prt_list, tsfg, tsfa, coszen,               &
+        lsm, lsm_ruc, sncovr_ice, alb1d, slmsk,                         &
+        snowd, sncovr, snoalb, zorl, hprime, alvsf, alnsf, alvwf,       &
+        alnwf, facsf, facwf, fice, tisfc, sfalb, nday, idxday, sfcalb1, &
+        alb_ice, alb_sno_ice,                                           & ! output
         sfcalb2, sfcalb3, sfcalb4, errmsg, errflg)
 
       use machine,                   only: kind_phys
@@ -24,6 +27,7 @@
       implicit none
 
       integer,                              intent(in)    :: im, lndp_type, n_var_lndp
+      integer,                              intent(in)    :: lsm, lsm_ruc
       character(len=3)    , dimension(:),   intent(in)    :: lndp_var_list
       logical,                              intent(in)    :: lsswr
       real(kind=kind_phys), dimension(:),   intent(in)    :: lndp_prt_list
@@ -35,12 +39,15 @@
                                                              alvsf, alnsf,     &
                                                              alvwf, alnwf,     &
                                                              facsf, facwf,     &
+                                                             sncovr_ice,       &
                                                              fice, tisfc
       real(kind=kind_phys), dimension(im),  intent(inout) :: sfalb
       integer,                              intent(out)   :: nday
       integer, dimension(im),               intent(out)   :: idxday
       real(kind=kind_phys), dimension(im),  intent(out)   :: sfcalb1, sfcalb2, &
                                                              sfcalb3, sfcalb4
+      real(kind=kind_phys), dimension(im),  intent(out)   :: alb_ice,          &
+                                                             alb_sno_ice
       character(len=*),                     intent(out)   :: errmsg
       integer,                              intent(out)   :: errflg
       ! Local variables
@@ -81,10 +88,11 @@
 !>  - Call module_radiation_surface::setalb() to setup surface albedo.
 !!  for SW radiation.
 
-        call setalb (slmsk, snowd, sncovr, snoalb, zorl,  coszen, tsfg, tsfa,  &  !  ---  inputs
+        call setalb (slmsk, lsm, lsm_ruc, snowd, sncovr, sncovr_ice, snoalb,   &
+                     zorl,  coszen, tsfg, tsfa,                                &  !  ---  inputs
                      hprime, alvsf, alnsf, alvwf, alnwf, facsf, facwf, fice,   &
                      tisfc, IM, alb1d, lndp_alb,                               &  !  mg, sfc-perts
-                     sfcalb)                                           !  ---  outputs
+                     sfcalb, alb_ice, alb_sno_ice)                                !  ---  outputs
 
 !> -# Approximate mean surface albedo from vis- and nir-  diffuse values.
         sfalb(:) = max(0.01, 0.5 * (sfcalb(:,2) + sfcalb(:,4)))

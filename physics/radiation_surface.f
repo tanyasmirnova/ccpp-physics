@@ -317,11 +317,12 @@
 !! @{
 !-----------------------------------
       subroutine setalb                                                 &
-     &     ( slmsk,snowf,sncovr,snoalb,zorlf,coszf,tsknf,tairf,hprif,   & !  ---  inputs:
+     &     ( slmsk,lsm,lsm_ruc,snowf,sncovr,sncovr_ice,snoalb,          &
+     &       zorlf,coszf,tsknf,tairf,hprif,                             & !  ---  inputs:
      &       alvsf,alnsf,alvwf,alnwf,facsf,facwf,fice,tisfc,            &
      &       IMAX,                                                      &
      &       albPpert, pertalb,                                         & ! sfc-perts, mgehne
-     &       sfcalb                                                     & !  ---  outputs:
+     &       sfcalb, alb_ice, alb_sno_ice                               & !  ---  outputs:
      &     )
 
 !  ===================================================================  !
@@ -343,6 +344,8 @@
 !     snowf (IMAX)  - snow depth water equivalent in mm                 !
 !     sncovr(IMAX)  - ialgflg=0: not used                               !
 !                     ialgflg=1: snow cover over land in fraction       !
+!     sncovr_ice(IMAX)  - ialgflg=0: not used                           !
+!                     ialgflg=1: snow cover over ice in fraction        !
 !     snoalb(IMAX)  - ialbflg=0: not used                               !
 !                     ialgflg=1: max snow albedo over land in fraction  !
 !     zorlf (IMAX)  - surface roughness in cm                           !
@@ -385,16 +388,19 @@
 
 !  ---  inputs
       integer, intent(in) :: IMAX
+      integer, intent(in) :: lsm, lsm_ruc
 
       real (kind=kind_phys), dimension(:), intent(in) ::                &
      &       slmsk, snowf, zorlf, coszf, tsknf, tairf, hprif,           &
      &       alvsf, alnsf, alvwf, alnwf, facsf, facwf, fice, tisfc,     &
-     &       sncovr, snoalb, albPpert                                     ! sfc-perts, mgehne
+     &       sncovr, sncovr_ice, snoalb, albPpert            ! sfc-perts, mgehne
       real (kind=kind_phys),  intent(in) :: pertalb          ! sfc-perts, mgehne
 
 !  ---  outputs
+      real (kind=kind_phys), dimension(:), intent(out) :: alb_ice,      &
+     &                                                    alb_sno_ice
       real (kind=kind_phys), dimension(IMAX,NF_ALBD), intent(out) ::    &
-     &       sfcalb
+     &                                                    sfcalb
 !     real (kind=kind_phys), dimension(:,:), intent(out) :: sfcalb
 
 !  ---  locals:
@@ -525,10 +531,15 @@
          if (nint(slmsk(i))==0 .and. tsknf(i)>con_tice) fsno0 = f_zero
 
          if (nint(slmsk(i)) == 2) then
-           asnow = 0.02*snowf(i)
-           argh  = min(0.50, max(.025, 0.01*zorlf(i)))
-           hrgh  = min(f_one, max(0.20, 1.0577-1.1538e-3*hprif(i) ) )
-           fsno0 = asnow / (argh + asnow) * hrgh
+           if(lsm == lsm_ruc) then
+           !-- use RUC LSM's snow-cover fraction for ice
+             fsno0 = sncovr_ice(i)
+           else
+             asnow = 0.02*snowf(i)
+             argh  = min(0.50, max(.025, 0.01*zorlf(i)))
+             hrgh  = min(f_one, max(0.20, 1.0577-1.1538e-3*hprif(i) ) )
+             fsno0 = asnow / (argh + asnow) * hrgh
+           endif
          endif
 
          fsno1 = f_one - fsno0
@@ -551,6 +562,8 @@
             asevd = 0.7 - 4.0*a1
             asend = 0.65 - 3.6875*a1
          endif
+         !-- output alb_ice for use in LSMs
+         alb_ice(i) = max(0.6, 0.5 * (asend + asevd))
 
 !>  - Calculate diffused snow albedo, land area use input max snow
 !!      albedo.
@@ -569,6 +582,9 @@
             asnnd = (0.60 + b1) * fice(i) + b3
             asevd = 0.70        * fice(i) + b3
             asend = 0.60        * fice(i) + b3
+            !-- output alb_sno_ice for use in LSMs
+            alb_sno_ice(i) = 0.65 + b1
+
          else
             asnvd = snoalb(i)
             asnnd = snoalb(i)
@@ -674,7 +690,7 @@
       subroutine setemis                                                &
      &     ( xlon,xlat,slmsk,snowf,sncovr,zorlf,tsknf,tairf,hprif,      &  !  ---  inputs:
      &       IMAX,                                                      &
-     &       sfcemis                                                    &  !  ---  outputs:
+     &       semisbase, sfcemis                                         &  !  ---  outputs:
      &     )
 
 !  ===================================================================  !
@@ -725,6 +741,7 @@
      &       xlon,xlat, slmsk, snowf,sncovr, zorlf, tsknf, tairf, hprif
 
 !  ---  outputs
+      real (kind=kind_phys), dimension(:), intent(out) :: semisbase
       real (kind=kind_phys), dimension(:), intent(out) :: sfcemis
 
 !  ---  locals:
@@ -803,6 +820,7 @@
             idx = max( 2, idxems(i2,j2) )
             if ( idx >= 7 ) idx = 2
             sfcemis(i) = emsref(idx)
+            semisbase(i) = sfcemis(i)
 
           endif   ! end if_slmsk_block
 
@@ -813,7 +831,6 @@
             fsno0 = sncovr(i)
             fsno1 = f_one - fsno0
             sfcemis(i) = sfcemis(i)*fsno1 + emsref(8)*fsno0
-
           else                                           ! compute snow cover from snow depth
             if ( snowf(i) > f_zero ) then
               asnow = 0.02*snowf(i)

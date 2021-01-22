@@ -24,12 +24,14 @@ contains
 !> \section arg_table_rrtmgp_lw_pre_run
 !! \htmlinclude rrtmgp_lw_pre_run.html
 !!
-  subroutine rrtmgp_lw_pre_run (doLWrad, nCol, xlon, xlat, slmsk, zorl, snowd, sncovr, tsfc, &
+  subroutine rrtmgp_lw_pre_run (doLWrad, flag_init, lsm, lsm_ruc, nCol, xlon, xlat, slmsk, zorl, snowd, sncovr, tsfc, &
        hprime, lw_gas_props, sfc_emiss_byband, semis, errmsg, errflg)
     
     ! Inputs
     logical, intent(in) :: &
          doLWrad          ! Logical flag for longwave radiation call
+    logical, intent(in) :: flag_init
+    integer, intent(in) :: lsm, lsm_ruc
     integer, intent(in) :: &
          nCol             ! Number of horizontal grid points
     real(kind_phys), dimension(nCol), intent(in) :: &
@@ -66,7 +68,13 @@ contains
     ! #######################################################################################
     ! Call module_radiation_surface::setemis(),to setup surface emissivity for LW radiation.
     ! #######################################################################################
+    if(lsm /= lsm_ruc .or. (lsm == lsm_ruc .and. flag_init) then
+    !-- 1. Compute surface emissivity when RUC LSM is not used
+    !-- 2. when RUC LSM is used, compute emissivity only
+    !-- at the first time step and after that use emissivity from RUC LSM
+
     call setemis (xlon, xlat, slmsk, snowd, sncovr, zorl, tsfc, tsfc, hprime, nCol, semis)
+    endif
 
     ! Assign same emissivity to all bands
     do iBand=1,lw_gas_props%get_nband()

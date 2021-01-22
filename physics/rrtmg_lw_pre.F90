@@ -12,8 +12,8 @@
 !> \section arg_table_rrtmg_lw_pre_run Argument Table
 !! \htmlinclude rrtmg_lw_pre_run.html
 !!
-      subroutine rrtmg_lw_pre_run (im, lslwr, xlat, xlon, slmsk, snowd, sncovr,&
-        zorl, hprime, tsfg, tsfa, semis, errmsg, errflg)
+      subroutine rrtmg_lw_pre_run (im, flag_init, lsm, lsm_ruc, lslwr, xlat, xlon, slmsk, snowd, sncovr,&
+        zorl, hprime, tsfg, tsfa, semisbase, semis, errmsg, errflg)
     
       use machine,                   only: kind_phys
       use module_radiation_surface,  only: setemis
@@ -21,10 +21,12 @@
       implicit none
       
       integer,                              intent(in)  :: im
+      logical,                              intent(in)  :: flag_init
+      integer,                              intent(in)  :: lsm, lsm_ruc
       logical,                              intent(in)  :: lslwr
       real(kind=kind_phys), dimension(im),  intent(in)  :: xlat, xlon, slmsk,  &
         snowd, sncovr, zorl, hprime, tsfg, tsfa 
-      real(kind=kind_phys), dimension(im),  intent(out) :: semis
+      real(kind=kind_phys), dimension(im),  intent(out) :: semisbase, semis
       character(len=*),                     intent(out) :: errmsg
       integer,                              intent(out) :: errflg
 
@@ -35,9 +37,14 @@
       if (lslwr) then
 !>  - Call module_radiation_surface::setemis(),to setup surface
 !! emissivity for LW radiation.
-        call setemis (xlon, xlat, slmsk, snowd, sncovr, zorl, tsfg, tsfa,      &
-                      hprime, im,                                              & !  ---  inputs
-                      semis)                              !  ---  outputs
+        if(lsm /= lsm_ruc .or. (lsm == lsm_ruc .and. flag_init) ) then
+        !-- 1. Compute surface emissivity if RUC LSM is not used
+        !-- 2. If RUC LSM is used, compute emissivity only
+        !      at the first time step and after that use emissivity from RUC LSM
+          call setemis (xlon, xlat, slmsk, snowd, sncovr, zorl, tsfg, tsfa,      &
+                        hprime, im,                                              & !  ---  inputs
+                        semisbase, semis)                              !  ---  outputs
+        endif
       endif
 
       end subroutine rrtmg_lw_pre_run
