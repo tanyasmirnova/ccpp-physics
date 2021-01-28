@@ -25,7 +25,7 @@ contains
 !! \htmlinclude rrtmgp_lw_pre_run.html
 !!
   subroutine rrtmgp_lw_pre_run (doLWrad, flag_init, lsm, lsm_ruc, nCol, xlon, xlat, slmsk, zorl, snowd, sncovr, tsfc, &
-       hprime, lw_gas_props, sfc_emiss_byband, semis, errmsg, errflg)
+       hprime, lw_gas_props, sfc_emiss_byband, semisbase, semis, errmsg, errflg)
     
     ! Inputs
     logical, intent(in) :: &
@@ -54,7 +54,7 @@ contains
     integer, intent(out) :: &  
          errflg           ! Error flag
     real(kind_phys), dimension(nCol), intent(out) :: &
-         semis
+         semisbase, semis
 
     ! Local variables
     integer :: iBand
@@ -68,12 +68,13 @@ contains
     ! #######################################################################################
     ! Call module_radiation_surface::setemis(),to setup surface emissivity for LW radiation.
     ! #######################################################################################
-    if(lsm /= lsm_ruc .or. (lsm == lsm_ruc .and. flag_init) then
+    if(lsm /= lsm_ruc .or. (lsm == lsm_ruc .and. flag_init)) then
     !-- 1. Compute surface emissivity when RUC LSM is not used
     !-- 2. when RUC LSM is used, compute emissivity only
     !-- at the first time step and after that use emissivity from RUC LSM
 
-    call setemis (xlon, xlat, slmsk, snowd, sncovr, zorl, tsfc, tsfc, hprime, nCol, semis)
+    call setemis (xlon, xlat, slmsk, snowd, sncovr, zorl, tsfc, tsfc, hprime, nCol, semisbase, semis)
+
     endif
 
     ! Assign same emissivity to all bands

@@ -127,6 +127,15 @@
   type = ty_gas_optics_rrtmgp
   intent = in
   optional = F
+[semisbase]
+  standard_name = baseline_surface_longwave_emissivity
+  long_name = baseline surface lw emissivity in fraction
+  units = frac
+  dimensions = (horizontal_loop_extent)
+  type = real
+  kind = kind_phys
+  intent = out
+  optional = F
 [semis]
   standard_name = surface_longwave_emissivity
   long_name = surface lw emissivity in fraction

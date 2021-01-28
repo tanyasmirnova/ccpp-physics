@@ -27,18 +27,20 @@ contains
 !! \htmlinclude GFS_rrtmgp_sw_pre.html
 !!
   subroutine GFS_rrtmgp_sw_pre_run(me, nCol, nLev, lndp_type, n_var_lndp,lndp_var_list,     &  
-       lndp_prt_list, doSWrad, solhr,                                                       &
-       lon, coslat, sinlat,  snowd, sncovr, snoalb, zorl, tsfc, hprime, alvsf,              &
+       lndp_prt_list, doSWrad, solhr, lsm, lsm_ruc,                                         &
+       lon, coslat, sinlat,  snowd, sncovr, sncovr_ice, snoalb, zorl, tsfc, hprime, alvsf,  &
        alnsf, alvwf, alnwf, facsf, facwf, fice, tisfc, lsmask, sfc_wts, p_lay, tv_lay,      &
        relhum, p_lev, sw_gas_props,                                                         &
        nday, idxday, coszen, coszdg, sfc_alb_nir_dir, sfc_alb_nir_dif,                      &
-       sfc_alb_uvvis_dir, sfc_alb_uvvis_dif, sfc_alb_dif, errmsg, errflg)
+       sfc_alb_uvvis_dir, sfc_alb_uvvis_dif, sfc_alb_dif, alb_ice, alb_sno_ice, errmsg, errflg)
     
     ! Inputs   
     integer, intent(in)    :: &
          me,                & ! Current MPI rank
          nCol,              & ! Number of horizontal grid points
          nLev,              & ! Number of vertical layers
+         lsm,               & ! LSM option
+         lsm_ruc,           & ! option for RUC LSM
          n_var_lndp,        &  ! Number of surface variables perturbed
          lndp_type             ! Type of land perturbations scheme used
     character(len=3), dimension(n_var_lndp), intent(in) ::  & 
@@ -56,6 +58,7 @@ contains
          sinlat,            & ! Sine(latitude)
          snowd,             & ! Water equivalent snow depth (mm)
          sncovr,            & ! Surface snow area fraction (frac)
+         sncovr_ice,        & ! Surface snow area fraction (frac)
          snoalb,            & ! Maximum snow albedo (frac)
          zorl,              & ! Surface roughness length (cm)
          tsfc,              & ! Surface skin temperature (K)
@@ -87,6 +90,8 @@ contains
     real(kind_phys), dimension(ncol), intent(out) :: &
          coszen,            & ! Cosine of SZA
          coszdg,            & ! Cosine of SZA, daytime
+         alb_ice,           & ! Albedo of snow-free ice
+         alb_sno_ice,       & ! Albedo of snow cover on ice
          sfc_alb_dif          ! Mean surface diffused (nIR+uvvis) sw albedo
     real(kind_phys), dimension(sw_gas_props%get_nband(),ncol), intent(out) :: &
          sfc_alb_nir_dir,   & ! Surface albedo (direct) 
@@ -132,8 +137,8 @@ contains
        ! ####################################################################################
        alb1d(:) = 0.
        lndp_alb = -999.
-       call setalb (lsmask, snowd, sncovr, snoalb, zorl, coszen, tsfc, tsfc, hprime, alvsf, &
-            alnsf, alvwf, alnwf, facsf, facwf, fice, tisfc, NCOL, alb1d, lndp_alb, sfcalb)
+       call setalb (lsmask, lsm, lsm_ruc, snowd, sncovr, sncovr_ice, snoalb, zorl, coszen, tsfc, tsfc, hprime, alvsf, &
+            alnsf, alvwf, alnwf, facsf, facwf, fice, tisfc, NCOL, alb1d, lndp_alb, sfcalb, alb_ice, alb_sno_ice)
        
        ! Approximate mean surface albedo from vis- and nir-  diffuse values.
        sfc_alb_dif(:) = max(0.01, 0.5 * (sfcalb(:,2) + sfcalb(:,4)))

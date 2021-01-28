@@ -82,6 +82,22 @@
   kind = kind_phys
   intent = in
   optional = F
+[lsm]
+  standard_name = flag_for_land_surface_scheme
+  long_name = flag for land surface model
+  units = flag
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[lsm_ruc]
+  standard_name = flag_for_ruc_land_surface_scheme
+  long_name = flag for RUC land surface model
+  units = flag
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
 [lon]
   standard_name = longitude
   long_name = longitude
@@ -130,6 +146,15 @@
 [sncovr]
   standard_name = surface_snow_area_fraction_over_land
   long_name = surface snow area fraction
+  units = frac
+  dimensions = (horizontal_loop_extent)
+  type = real
+  kind = kind_phys
+  intent = in
+  optional = F
+[sncovr_ice]
+  standard_name = surface_snow_area_fraction_over_ice
+  long_name = surface snow area fraction over ice
   units = frac
   dimensions = (horizontal_loop_extent)
   type = real
@@ -367,6 +392,24 @@
   kind = kind_phys
   intent = out
   optional = F    
+[alb_ice]
+  standard_name =surface_snow_free_albedo_over_ice
+  long_name = surface snow-free albedo over ice
+  units = frac
+  dimensions = (horizontal_loop_extent)
+  type = real
+  kind = kind_phys
+  intent = inout
+  optional = F
+[alb_sno_ice]
+  standard_name =surface_snow_albedo_over_ice
+  long_name = surface snow albedo over ice
+  units = frac
+  dimensions = (horizontal_loop_extent)
+  type = real
+  kind = kind_phys
+  intent = inout
+  optional = F
 [sfc_alb_dif]
   standard_name = surface_diffused_shortwave_albedo
   long_name = mean surface diffused sw albedo
