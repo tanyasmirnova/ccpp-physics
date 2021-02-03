@@ -17,7 +17,7 @@
         lsm, lsm_ruc, sncovr_ice, alb1d, slmsk,                         &
         snowd, sncovr, snoalb, zorl, hprime, alvsf, alnsf, alvwf,       &
         alnwf, facsf, facwf, fice, tisfc, sfalb, nday, idxday, sfcalb1, &
-        alb_ice, alb_sno_ice,                                           & ! output
+        alb_ice, alb_sno_ice, sfalb_lnd_bck,                            & ! output
         sfcalb2, sfcalb3, sfcalb4, errmsg, errflg)
 
       use machine,                   only: kind_phys
@@ -46,8 +46,9 @@
       integer, dimension(im),               intent(out)   :: idxday
       real(kind=kind_phys), dimension(im),  intent(out)   :: sfcalb1, sfcalb2, &
                                                              sfcalb3, sfcalb4
-      real(kind=kind_phys), dimension(im),  intent(out)   :: alb_ice,          &
-                                                             alb_sno_ice
+      real(kind=kind_phys), dimension(im),  intent(inout) :: alb_ice,          &
+                                                             alb_sno_ice,      &
+                                                             sfalb_lnd_bck
       character(len=*),                     intent(out)   :: errmsg
       integer,                              intent(out)   :: errflg
       ! Local variables
@@ -92,7 +93,7 @@
                      zorl,  coszen, tsfg, tsfa,                                &  !  ---  inputs
                      hprime, alvsf, alnsf, alvwf, alnwf, facsf, facwf, fice,   &
                      tisfc, IM, alb1d, lndp_alb,                               &  !  mg, sfc-perts
-                     sfcalb, alb_ice, alb_sno_ice)                                !  ---  outputs
+                     sfcalb, alb_ice, alb_sno_ice, sfalb_lnd_bck)                 !  ---  outputs
 
 !> -# Approximate mean surface albedo from vis- and nir-  diffuse values.
         sfalb(:) = max(0.01, 0.5 * (sfcalb(:,2) + sfcalb(:,4)))

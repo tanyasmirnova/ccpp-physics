@@ -690,24 +690,6 @@
   kind = kind_phys
   intent = in
   optional = F
-[alvwf]
-  standard_name = mean_vis_albedo_with_weak_cosz_dependency
-  long_name = mean vis albedo with weak cosz dependency
-  units = frac
-  dimensions = (horizontal_loop_extent)
-  type = real
-  kind = kind_phys
-  intent = in
-  optional = F
-[alnwf]
-  standard_name = mean_nir_albedo_with_weak_cosz_dependency
-  long_name = mean nir albedo with weak cosz dependency
-  units = frac
-  dimensions = (horizontal_loop_extent)
-  type = real
-  kind = kind_phys
-  intent = in
-  optional = F
 [srflag]
   standard_name = flag_for_precipitation_type
   long_name = snow/rain flag for precipitation
@@ -716,6 +698,15 @@
   type = real
   kind = kind_phys
   intent = in
+  optional = F
+[sfalb_lnd_bck]
+  standard_name =surface_snow_free_albedo_over_land
+  long_name = surface snow-free albedo over ice
+  units = frac
+  dimensions = (horizontal_loop_extent)
+  type = real
+  kind = kind_phys
+  intent = inout
   optional = F
 [snoalb]
   standard_name = upper_bound_on_max_albedo_over_deep_snow

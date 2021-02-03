@@ -32,7 +32,8 @@ contains
        alnsf, alvwf, alnwf, facsf, facwf, fice, tisfc, lsmask, sfc_wts, p_lay, tv_lay,      &
        relhum, p_lev, sw_gas_props,                                                         &
        nday, idxday, coszen, coszdg, sfc_alb_nir_dir, sfc_alb_nir_dif,                      &
-       sfc_alb_uvvis_dir, sfc_alb_uvvis_dif, sfc_alb_dif, alb_ice, alb_sno_ice, errmsg, errflg)
+       sfc_alb_uvvis_dir, sfc_alb_uvvis_dif, sfc_alb_dif,                                   &
+       alb_ice, alb_sno_ice, sfalb_lnd_bck, errmsg, errflg)
     
     ! Inputs   
     integer, intent(in)    :: &
@@ -90,9 +91,11 @@ contains
     real(kind_phys), dimension(ncol), intent(out) :: &
          coszen,            & ! Cosine of SZA
          coszdg,            & ! Cosine of SZA, daytime
+         sfc_alb_dif          ! Mean surface diffused (nIR+uvvis) sw albedo
+    real(kind_phys), dimension(ncol), intent(inout) :: &
          alb_ice,           & ! Albedo of snow-free ice
          alb_sno_ice,       & ! Albedo of snow cover on ice
-         sfc_alb_dif          ! Mean surface diffused (nIR+uvvis) sw albedo
+         sfalb_lnd_bck        ! Albedo of snow-free land
     real(kind_phys), dimension(sw_gas_props%get_nband(),ncol), intent(out) :: &
          sfc_alb_nir_dir,   & ! Surface albedo (direct) 
          sfc_alb_nir_dif,   & ! Surface albedo (diffuse)
@@ -138,8 +141,8 @@ contains
        alb1d(:) = 0.
        lndp_alb = -999.
        call setalb (lsmask, lsm, lsm_ruc, snowd, sncovr, sncovr_ice, snoalb, zorl, coszen, tsfc, tsfc, hprime, alvsf, &
-            alnsf, alvwf, alnwf, facsf, facwf, fice, tisfc, NCOL, alb1d, lndp_alb, sfcalb, alb_ice, alb_sno_ice)
-       
+            alnsf, alvwf, alnwf, facsf, facwf, fice, tisfc, NCOL, alb1d, lndp_alb, sfcalb,                            &
+            alb_ice, alb_sno_ice, sfalb_lnd_bck) 
        ! Approximate mean surface albedo from vis- and nir-  diffuse values.
        sfc_alb_dif(:) = max(0.01, 0.5 * (sfcalb(:,2) + sfcalb(:,4)))
   

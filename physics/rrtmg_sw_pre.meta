@@ -271,6 +271,15 @@
   kind = kind_phys
   intent = inout
   optional = F
+[sfalb_lnd_bck]
+  standard_name =surface_snow_free_albedo_over_land
+  long_name = surface snow-free albedo over ice
+  units = frac
+  dimensions = (horizontal_loop_extent)
+  type = real
+  kind = kind_phys
+  intent = inout
+  optional = F
 [nday]
   standard_name = daytime_points_dimension
   long_name = daytime points dimension

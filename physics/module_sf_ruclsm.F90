@@ -65,7 +65,7 @@ CONTAINS
                    ZS,RAINBL,SNOW,SNOWH,SNOWC,FRZFRAC,frpcpn,    &
                    rhosnf,precipfr,                              &
                    Z3D,P8W,T3D,QV3D,QC3D,RHO3D,EMISBCK,          &
-                   GLW,GSW,EMISS,CHKLOWQ, CHS,                   &
+                   GLW,GSWdn,GSW,EMISS,CHKLOWQ, CHS,             &
                    FLQC,FLHC,MAVAIL,CANWAT,VEGFRA,ALB,ZNT,       &
                    Z0,SNOALB,ALBBCK,LAI,                         & 
                    landusef, nlcat,                              & ! mosaic_lu, mosaic_soil, &
@@ -185,6 +185,7 @@ CONTAINS
    REAL,       DIMENSION( ims:ime , jms:jme ),                   &
                INTENT(IN   )    ::                       RAINBL, &
                                                             GLW, &
+                                                          GSWdn, &
                                                             GSW, &
                                                          ALBBCK, &
                                                            FLHC, &
@@ -909,12 +910,13 @@ CONTAINS
          CALL SFCTMP (debug_print, dt,ktau,conflx,i,j,           &
 !--- input variables
                 nzs,nddzs,nroot,meltfactor,                      &   !added meltfactor
-                iland,isoil,ivgtyp(i,j),isltyp(i,j),  &
+                iland,isoil,ivgtyp(i,j),isltyp(i,j),             &
                 PRCPMS, NEWSNMS,SNWE,SNHEI,SNOWFRAC,             &
                 RHOSN,RHONEWSN,RHOSNFALL,                        &
                 snowrat,grauprat,icerat,curat,                   &
                 PATM,TABS,QVATM,QCATM,RHO,                       &
-                GLW(I,J),GSW(I,J),EMISSL(I,J),EMISBCK(I,J),      &
+                GLW(I,J),GSWdn(i,j),GSW(I,J),                    &
+                EMISSL(I,J),EMISBCK(I,J),                        &
                 QKMS,TKMS,PC(I,J),LMAVAIL(I,J),                  &
                 canwatr,vegfra(I,J),alb(I,J),znt(I,J),           &
                 snoalb(i,j),albbck(i,j),lai(i,j),                &   !new
@@ -1181,7 +1183,7 @@ endif
                 RHOSN,RHONEWSN,RHOSNFALL,                        &
                 snowrat,grauprat,icerat,curat,                   &
                 PATM,TABS,QVATM,QCATM,rho,                       &
-                GLW,GSW,EMISS,EMISBCK,QKMS,TKMS,PC,              &
+                GLW,GSWdn,GSW,EMISS,EMISBCK,QKMS,TKMS,PC,        &
                 MAVAIL,CST,VEGFRA,ALB,ZNT,                       &
                 ALB_SNOW,ALB_SNOW_FREE,lai,                      &
                 MYJ,SEAICE,ISICE,                                &
@@ -1217,6 +1219,7 @@ endif
    REAL                                                        , &
             INTENT(IN   )    ::                             GLW, &
                                                             GSW, &
+                                                          GSWdn, &
                                                              PC, &
                                                          VEGFRA, &
                                                   ALB_SNOW_FREE, &
@@ -1430,7 +1433,7 @@ endif
           enddo
 
         GSWnew=GSW
-        GSWin=GSW/(1.-alb)
+        GSWin=GSWdn !/(1.-alb)
         ALBice=ALB_SNOW_FREE
         ALBsn=alb_snow
         EMISSN = 0.99 ! from setemis, from WRF - 0.98
@@ -2597,7 +2600,8 @@ endif
 ! evaporation, effects sparsely vegetated areas--> cooler during the day
 !        fc=max(qmin,ref*0.25)  ! 
 ! For now we'll go back to ref*0.5
-        fc=max(qmin,ref*0.5)
+        fc=max(qmin,ref*0.7)
+        !fc=max(qmin,ref*0.5)
         fex_fc=1.
       if((soilmois(1)+qmin) > fc .or. (qvatm-qvg) > 0.) then
         soilres = 1.

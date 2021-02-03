@@ -322,7 +322,7 @@
      &       alvsf,alnsf,alvwf,alnwf,facsf,facwf,fice,tisfc,            &
      &       IMAX,                                                      &
      &       albPpert, pertalb,                                         & ! sfc-perts, mgehne
-     &       sfcalb, alb_ice, alb_sno_ice                               & !  ---  outputs:
+     &       sfcalb, alb_ice, alb_sno_ice, sfalb_lnd_bck                & !  ---  outputs:
      &     )
 
 !  ===================================================================  !
@@ -397,8 +397,9 @@
       real (kind=kind_phys),  intent(in) :: pertalb          ! sfc-perts, mgehne
 
 !  ---  outputs
-      real (kind=kind_phys), dimension(:), intent(out) :: alb_ice,      &
-     &                                                    alb_sno_ice
+      real (kind=kind_phys), dimension(:), intent(inout) ::   alb_ice,  &
+     &                                                    alb_sno_ice,  &
+     &                                                    sfalb_lnd_bck
       real (kind=kind_phys), dimension(IMAX,NF_ALBD), intent(out) ::    &
      &                                                    sfcalb
 !     real (kind=kind_phys), dimension(:,:), intent(out) :: sfcalb
@@ -450,6 +451,11 @@
             asevd = 0.7 - 4.0*a1
             asend = 0.65 - 3.6875*a1
          endif
+         if(lsm == lsm_ruc) then
+           !-- output alb_ice for use in LSMs (diffused albedo adjusted
+           !   for T around freezing)
+           alb_ice(i) = max(0.6, 0.5 * (asend + asevd))
+         endif
 
 !>  - Calculate diffused snow albedo.
 
@@ -481,6 +487,11 @@
          else
             asnvb = asnvd
             asnnb = asnnd
+         endif
+         if(lsm == lsm_ruc) then
+           !-- alb_sno_ice (diffused and direct) for use in LSMs
+           alb_sno_ice(i) = min(0.98, 0.5 * (0.65 + b1
+     &                    + 0.5 * (asnvb+asnnb)))
          endif
 
 !>  - Calculate direct sea surface albedo.
@@ -515,6 +526,11 @@
          sfcalb(i,2) = (a2 + b2) * 0.96 *flnd + asend*fsea + asnnd*fsno
          sfcalb(i,3) = min(0.99, ab1bm) *flnd + asevb*fsea + asnvb*fsno
          sfcalb(i,4) = (a1 + b1) * 0.96 *flnd + asevd*fsea + asnvd*fsno
+         if(lsm == lsm_ruc) then
+           !-- alb_lnd (diffused and direct) for snow-free areas for use
+           !in LSMs
+           sfalb_lnd_bck(i) = 0.25*(ab1bm + alnwf(i) + ab2bm + alvwf(i))
+         endif
 
         enddo    ! end_do_i_loop
 
@@ -526,14 +542,14 @@
 !>  - Calculate snow cover input directly for land model, no
 !!      conversion needed.
 
-         fsno0 = sncovr(i)
+         fsno0 = sncovr(i) ! snow fraction on land
 
          if (nint(slmsk(i))==0 .and. tsknf(i)>con_tice) fsno0 = f_zero
 
          if (nint(slmsk(i)) == 2) then
            if(lsm == lsm_ruc) then
            !-- use RUC LSM's snow-cover fraction for ice
-             fsno0 = sncovr_ice(i)
+             fsno0 = sncovr_ice(i) ! snow fraction on ice
            else
              asnow = 0.02*snowf(i)
              argh  = min(0.50, max(.025, 0.01*zorlf(i)))
@@ -542,12 +558,12 @@
            endif
          endif
 
-         fsno1 = f_one - fsno0
-         flnd0 = min(f_one, facsf(i)+facwf(i))
-         fsea0 = max(f_zero, f_one-flnd0)
-         fsno  = fsno0
-         fsea  = fsea0 * fsno1
-         flnd  = flnd0 * fsno1
+         fsno1 = f_one - fsno0 ! snow-free fraction (land or ice), 1-sea
+         flnd0 = min(f_one, facsf(i)+facwf(i)) ! 1-land, 0-sea/ice
+         fsea0 = max(f_zero, f_one-flnd0)! ! 1-sea/ice, 0-land
+         fsno  = fsno0 ! snow cover, >0 - land/ice
+         fsea  = fsea0 * fsno1 ! 1-sea/ice, 0-land
+         flnd  = flnd0 * fsno1 ! <=1-land,0-sea/ice
 
 !>  - Calculate diffused sea surface albedo.
 
@@ -562,8 +578,11 @@
             asevd = 0.7 - 4.0*a1
             asend = 0.65 - 3.6875*a1
          endif
-         !-- output alb_ice for use in LSMs
-         alb_ice(i) = max(0.6, 0.5 * (asend + asevd))
+         if(lsm == lsm_ruc) then
+           !-- output alb_ice for use in RUC LSM (diffused albedo adjusted
+           !   for T around freezing)
+           alb_ice(i) = max(0.6, 0.5 * (asend + asevd))
+         endif
 
 !>  - Calculate diffused snow albedo, land area use input max snow
 !!      albedo.
@@ -582,9 +601,6 @@
             asnnd = (0.60 + b1) * fice(i) + b3
             asevd = 0.70        * fice(i) + b3
             asend = 0.60        * fice(i) + b3
-            !-- output alb_sno_ice for use in LSMs
-            alb_sno_ice(i) = 0.65 + b1
-
          else
             asnvd = snoalb(i)
             asnnd = snoalb(i)
@@ -601,6 +617,11 @@
              asnvb = asnvd
              asnnb = asnnd
            endif
+           if(lsm == lsm_ruc) then
+             !-- alb_sno_ice (diffused and direct) for use in LSMs
+             alb_sno_ice(i) = min(0.98, 0.5 * (0.65 + b1
+     &                      + 0.5 * (asnvb+asnnb)))
+           endif
          else
            asnvb = snoalb(i)
            asnnb = snoalb(i)
@@ -616,26 +637,35 @@
             rfcs = 1.775/(1.0+1.55*coszf(i))
 
             if (tsknf(i) >= con_t0c) then
+            !- sea
               asevb = max(asevd, 0.026/(coszf(i)**1.7+0.065)            &
      &              + 0.15 * (coszf(i)-0.1) * (coszf(i)-0.5)            &
      &              * (coszf(i)-f_one))
               asenb = asevb
             else
+            !- ice
               asevb = asevd
               asenb = asend
             endif
          else
+         !- no sun
             rfcs  = f_one
             asevb = asevd
             asenb = asend
          endif
 
+         !- zenith dependence is applied only to direct beam albedo
          ab1bm = min(0.99, alnsf(i)*rfcs)
          ab2bm = min(0.99, alvsf(i)*rfcs)
          sfcalb(i,1) = ab1bm   *flnd + asenb*fsea + asnnb*fsno
-         sfcalb(i,2) = alnwf(i)     *flnd + asend*fsea + asnnd*fsno
+         sfcalb(i,2) = alnwf(i)*flnd + asend*fsea + asnnd*fsno
          sfcalb(i,3) = ab2bm   *flnd + asevb*fsea + asnvb*fsno
-         sfcalb(i,4) = alvwf(i)     *flnd + asevd*fsea + asnvd*fsno
+         sfcalb(i,4) = alvwf(i)*flnd + asevd*fsea + asnvd*fsno
+
+         if(lsm == lsm_ruc) then
+           !-- alb_lnd (diffused and direct) for snow-free areas for use in LSMs
+           sfalb_lnd_bck(i) = 0.25*(ab1bm + alnwf(i) + ab2bm + alvwf(i))
+         endif 
 
         enddo    ! end_do_i_loop
 
@@ -657,6 +687,17 @@
             call ppfbet(albPpert(i),alpha,beta,iflag,albtmp)
             sfcalb(i,kk) = albtmp
           enddo
+            if(lsm == lsm_ruc) then
+              ! perturb mean surface albedo
+              m = sfalb_lnd_bck(i)
+              s = pertalb*m*(1.-m)
+              alpha = m*m*(1.-m)/(s*s)-m
+              beta  = alpha*(1.-m)/m
+              ! compute beta distribution value corresponding
+              ! to the given percentile albPpert to use as new albedo
+              call ppfbet(albPpert(i),alpha,beta,iflag,albtmp)
+              sfalb_lnd_bck(i) = albtmp
+            endif
         enddo     ! end_do_i_loop
       endif
 

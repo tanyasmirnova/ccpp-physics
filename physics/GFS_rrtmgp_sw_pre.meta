@@ -392,6 +392,15 @@
   kind = kind_phys
   intent = out
   optional = F    
+[sfc_alb_dif]
+  standard_name = surface_diffused_shortwave_albedo
+  long_name = mean surface diffused sw albedo
+  units = frac
+  dimensions = (horizontal_loop_extent)
+  type = real
+  kind = kind_phys  
+  intent = out
+  optional = F  
 [alb_ice]
   standard_name =surface_snow_free_albedo_over_ice
   long_name = surface snow-free albedo over ice
@@ -410,15 +419,15 @@
   kind = kind_phys
   intent = inout
   optional = F
-[sfc_alb_dif]
-  standard_name = surface_diffused_shortwave_albedo
-  long_name = mean surface diffused sw albedo
+[sfalb_lnd_bck]
+  standard_name =surface_snow_free_albedo_over_land
+  long_name = surface snow-free albedo over ice
   units = frac
   dimensions = (horizontal_loop_extent)
   type = real
-  kind = kind_phys  
-  intent = out
-  optional = F  
+  kind = kind_phys
+  intent = inout
+  optional = F
 [errmsg]
   standard_name = ccpp_error_message
   long_name = error message for error handling in CCPP
