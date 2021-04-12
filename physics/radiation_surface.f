@@ -980,7 +980,7 @@
           if (fracl < epsln) then                    ! no land
             if ( abs(fraco-f_one) < epsln ) then     ! open water point
               sfcemis(i) = emsref(1)
-            elseif ( abs(fraci-f_one) > epsln ) then ! complete sea/lake ice
+            elseif ( abs(fraci-f_one) < epsln ) then ! complete sea/lake ice
               sfcemis(i) = emsref(7)
             else
             !-- fractional sea ice
